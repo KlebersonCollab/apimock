@@ -1,7 +1,20 @@
 # MockForge Studio ⚡
 
 > **Instant High-Performance API Mock Studio & Frontend Decoupler in Golang**
-> Single-binary, ultra-fast mock engine with embedded web interface adhering to the Linear Dark Canvas Design System.
+> Single-binary, ultra-fast mock engine with embedded web interface adhering to the Linear Dark Canvas Design System (`#010102` canvas, `#5e6ad2` Linear lavender accent).
+
+---
+
+## 📸 Interface Preview
+
+### 1. Dashboard & Telemetry Overview
+![MockForge Dashboard](docs/images/dashboard.jpg)
+
+### 2. Visual Endpoint Studio & Dynamic Faker Templates
+![Endpoint Studio & Template Builder](docs/images/endpoint_studio.jpg)
+
+### 3. Real-Time Request Inspector & Live Stream
+![Live Request Inspector](docs/images/live_traffic.jpg)
 
 ---
 
@@ -10,7 +23,7 @@
 1. **Instant Mock Endpoint Studio**:
    - Create dynamic REST endpoints (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `HEAD`).
    - Parameterized path matching (`/api/v1/users/:id`, `/orders/{orderId}/items/:itemId`) and wildcards (`/assets/*path`).
-   - Configurable status codes (200, 201, 204, 400, 401, 403, 404, 422, 500) and custom headers.
+   - Configurable status codes (200, 201, 204, 400, 401, 403, 404, 422, 500) and custom response headers.
 
 2. **Dynamic Template & Synthetic Faker Engine**:
    - Realistic synthetic data interpolation:
@@ -71,7 +84,7 @@ go run .
 
 ### 2. Custom Port & Options
 ```bash
-go run . -port 8080 -store data.json
+go run . -port 8080 -store mockforge_data.json
 ```
 
 ### 3. Open the Web Studio
@@ -82,10 +95,10 @@ Open your browser at **[http://localhost:8080](http://localhost:8080)**.
 ## 🧪 Running Tests & Sensors
 
 ```bash
-# Run unit & integration test suite with race detector
-go test -v -race ./...
+# Run unit & integration test suite
+go test -v ./...
 
-# Verify Go formatting and static analysis
+# Verify Go static analysis
 go vet ./...
 
 # Verify Spec Drift Sensor
