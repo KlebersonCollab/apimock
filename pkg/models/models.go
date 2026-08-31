@@ -26,6 +26,12 @@ const (
 	AuthTypeJWT    = "jwt"
 )
 
+// IsAuthRequired checks if authentication is active
+func IsAuthRequired(authType string) bool {
+	return authType != "" && authType != AuthTypeNone
+}
+
+
 // LatencyMode constants
 const (
 	LatencyModeFixed  = "fixed"

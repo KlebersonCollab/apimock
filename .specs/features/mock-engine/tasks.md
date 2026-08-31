@@ -13,7 +13,7 @@
 | Status | ID | Type | Description | Target Files | Dependencies | Evidence |
 |---|---|---|---|---|---|---|
 | [x] | TASK-01 | feat | Initialize Go module and implement domain models with validation tests | `go.mod`, `pkg/models/models.go`, `pkg/models/models_test.go` | None | cbc8d2b - PASS |
-| [ ] | TASK-02 | feat | Implement dynamic template interpolation and synthetic faker generator with unit tests | `pkg/template/faker.go`, `pkg/template/engine.go`, `pkg/template/engine_test.go` | TASK-01 | Pending |
+| [x] | TASK-02 | feat | Implement dynamic template interpolation and synthetic faker generator with unit tests | `pkg/template/faker.go`, `pkg/template/engine.go`, `pkg/template/engine_test.go` | TASK-01 | de31a0f - PASS |
 | [ ] | TASK-03 | feat | Implement Auth Guard Simulator with Bearer, API Key, Basic, and JWT token generator with unit tests | `pkg/auth/auth.go`, `pkg/auth/auth_test.go` | TASK-01 | Pending |
 | [ ] | TASK-04 | feat | Implement Stateful Auto-CRUD Collection Store with filtering, pagination, search, and unit tests | `pkg/store/store.go`, `pkg/store/store_test.go` | TASK-01 | Pending |
 | [ ] | TASK-05 | feat | Implement Circular Buffer Traffic Inspector and SSE Broadcaster with unit tests | `pkg/traffic/traffic.go`, `pkg/traffic/traffic_test.go` | TASK-01 | Pending |
