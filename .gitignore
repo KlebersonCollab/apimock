@@ -1,0 +1,16 @@
+# Binaries & Executables
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+mockforge
+mockforge.exe
+
+# Test binaries & caches
+*.test
+*.out
+
+# Data persistence files
+*.json.bak
+mockforge_data.json
