@@ -238,32 +238,51 @@ func (s *Server) dispatchMockEndpoint(w http.ResponseWriter, r *http.Request, ep
 		return
 	}
 
-	// B. Latency Simulation Calculation
+	// B. Evaluate Conditional Scenarios (First-Match Cascading)
+	matchedScenario := EvaluateScenarios(r, ep, params, reqBody)
+
+	respSpec := ep.Response
+	latencyCfg := ep.Latency
+	chaosCfg := ep.Chaos
+	matchedDesc := fmt.Sprintf("[%s] %s", ep.Method, ep.Path)
+
+	if matchedScenario != nil {
+		respSpec = matchedScenario.Response
+		if matchedScenario.Latency.Enabled {
+			latencyCfg = matchedScenario.Latency
+		}
+		if matchedScenario.Chaos.Enabled {
+			chaosCfg = matchedScenario.Chaos
+		}
+		matchedDesc = fmt.Sprintf("[%s] %s (Scenario: %s)", ep.Method, ep.Path, matchedScenario.Name)
+	}
+
+	// C. Latency Simulation Calculation
 	var simulatedDelayMs int64
-	if ep.Latency.Enabled {
-		if ep.Latency.Mode == models.LatencyModeFixed && ep.Latency.FixedMs > 0 {
-			simulatedDelayMs = int64(ep.Latency.FixedMs)
-		} else if ep.Latency.Mode == models.LatencyModeRandom && ep.Latency.MaxMs >= ep.Latency.MinMs {
-			nBig, _ := rand.Int(rand.Reader, big.NewInt(int64(ep.Latency.MaxMs-ep.Latency.MinMs+1)))
-			simulatedDelayMs = int64(ep.Latency.MinMs) + nBig.Int64()
+	if latencyCfg.Enabled {
+		if latencyCfg.Mode == models.LatencyModeFixed && latencyCfg.FixedMs > 0 {
+			simulatedDelayMs = int64(latencyCfg.FixedMs)
+		} else if latencyCfg.Mode == models.LatencyModeRandom && latencyCfg.MaxMs >= latencyCfg.MinMs {
+			nBig, _ := rand.Int(rand.Reader, big.NewInt(int64(latencyCfg.MaxMs-latencyCfg.MinMs+1)))
+			simulatedDelayMs = int64(latencyCfg.MinMs) + nBig.Int64()
 		}
 		if simulatedDelayMs > 0 {
 			time.Sleep(time.Duration(simulatedDelayMs) * time.Millisecond)
 		}
 	}
 
-	// C. Chaos Failure Injection
-	if ep.Chaos.Enabled && ep.Chaos.Rate > 0 {
+	// D. Chaos Failure Injection
+	if chaosCfg.Enabled && chaosCfg.Rate > 0 {
 		nBig, _ := rand.Int(rand.Reader, big.NewInt(1000))
 		roll := float64(nBig.Int64()) / 1000.0
-		if roll < ep.Chaos.Rate {
+		if roll < chaosCfg.Rate {
 			duration := time.Since(startTime).Milliseconds()
-			chaosStatus := ep.Chaos.StatusCode
+			chaosStatus := chaosCfg.StatusCode
 			if chaosStatus == 0 {
 				chaosStatus = http.StatusInternalServerError
 			}
 
-			chaosBody := ep.Chaos.ResponseBody
+			chaosBody := chaosCfg.ResponseBody
 			if strings.TrimSpace(chaosBody) == "" {
 				chaosBody = fmt.Sprintf(`{"error":"Simulated Chaos Failure","status":%d,"timestamp":"%s"}`, chaosStatus, time.Now().Format(time.RFC3339))
 			}
@@ -284,14 +303,14 @@ func (s *Server) dispatchMockEndpoint(w http.ResponseWriter, r *http.Request, ep
 				ResponseBody:     chaosBody,
 				DurationMs:       duration,
 				SimulatedDelayMs: simulatedDelayMs,
-				MatchedEndpoint:  fmt.Sprintf("[%s] %s", ep.Method, ep.Path),
+				MatchedEndpoint:  matchedDesc,
 				Error:            "Simulated Chaos Error",
 			})
 			return
 		}
 	}
 
-	// D. Build Template Context and Evaluate
+	// E. Build Template Context and Evaluate
 	reqCtx := &template.RequestContext{
 		Params:    params,
 		Query:     r.URL.Query(),
@@ -303,21 +322,21 @@ func (s *Server) dispatchMockEndpoint(w http.ResponseWriter, r *http.Request, ep
 		Timestamp: time.Now().Format(time.RFC3339),
 	}
 
-	evaluatedBody := s.templateEngine.Evaluate(ep.Response.Body, reqCtx)
+	evaluatedBody := s.templateEngine.Evaluate(respSpec.Body, reqCtx)
 
-	// E. Set Custom Headers
-	for hK, hV := range ep.Response.Headers {
+	// F. Set Custom Headers
+	for hK, hV := range respSpec.Headers {
 		evalHeaderVal := s.templateEngine.Evaluate(hV, reqCtx)
 		w.Header().Set(hK, evalHeaderVal)
 	}
 
-	contentType := ep.Response.ContentType
+	contentType := respSpec.ContentType
 	if contentType == "" {
 		contentType = "application/json"
 	}
 	w.Header().Set("Content-Type", contentType)
 
-	statusCode := ep.Response.StatusCode
+	statusCode := respSpec.StatusCode
 	if statusCode == 0 {
 		statusCode = http.StatusOK
 	}
@@ -339,7 +358,7 @@ func (s *Server) dispatchMockEndpoint(w http.ResponseWriter, r *http.Request, ep
 		ResponseBody:     evaluatedBody,
 		DurationMs:       duration,
 		SimulatedDelayMs: simulatedDelayMs,
-		MatchedEndpoint:  fmt.Sprintf("[%s] %s", ep.Method, ep.Path),
+		MatchedEndpoint:  matchedDesc,
 	})
 }
 
@@ -924,6 +943,57 @@ func (s *Server) SeedDemoData() {
 			StatusCode: 500,
 		},
 		Auth:      models.AuthConfig{Type: models.AuthTypeNone},
+		Scenarios: []models.Scenario{
+			{
+				ID:        "sc-users-archived",
+				Name:      "Filter by Archived Status (Empty State)",
+				Enabled:   true,
+				Priority:  1,
+				MatchMode: models.MatchModeAll,
+				Conditions: []models.Condition{
+					{
+						Source:   models.ConditionSourceQuery,
+						Property: "status",
+						Operator: models.OperatorEquals,
+						Value:    "archived",
+					},
+				},
+				Response: models.ResponseMock{
+					StatusCode:  200,
+					ContentType: "application/json",
+					Body:        `[]`,
+				},
+			},
+			{
+				ID:        "sc-users-vip",
+				Name:      "VIP Tier Filter",
+				Enabled:   true,
+				Priority:  2,
+				MatchMode: models.MatchModeAll,
+				Conditions: []models.Condition{
+					{
+						Source:   models.ConditionSourceQuery,
+						Property: "tier",
+						Operator: models.OperatorEquals,
+						Value:    "vip",
+					},
+				},
+				Response: models.ResponseMock{
+					StatusCode:  200,
+					ContentType: "application/json",
+					Body: `[
+  {
+    "id": "vip-001",
+    "name": "{{faker.name}}",
+    "email": "{{faker.email}}",
+    "role": "VIP Member",
+    "tier": "gold",
+    "badge": "🌟 VIP Gold"
+  }
+]`,
+				},
+			},
+		},
 		CreatedAt: now,
 		UpdatedAt: now,
 	})
@@ -969,11 +1039,11 @@ func (s *Server) SeedDemoData() {
 		UpdatedAt: now,
 	})
 
-	// 3. Mock Login Endpoint generating JWT
+	// 3. Mock Login Endpoint generating JWT with Multi-Scenarios
 	_, _ = s.AddEndpoint(models.Endpoint{
 		ID:          "ep-auth-login",
 		Name:        "User Authentication (Login)",
-		Description: "Accepts email/password and returns a bearer JWT simulation token",
+		Description: "Accepts email/password and demonstrates multi-scenario branching (invalid password 401, missing email 400, superadmin 200)",
 		Method:      "POST",
 		Path:        "/api/v1/auth/login",
 		Enabled:     true,
@@ -982,21 +1052,107 @@ func (s *Server) SeedDemoData() {
 			StatusCode:  200,
 			ContentType: "application/json",
 			Body: `{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTYiLCJuYW1lIjoiQWxpY2UgRGV2ZWxvcGVyIiwiZW1haWwiOiJhbGljZUBsaW5lYXIuYXBwIiwicm9sZSI6ImFkbWluIn0.mocked_signature_hash_token_abc123",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTYiLCJuYW1lIjoiQWxpY2UgRGV2ZWxvcGVyIiwiZW1haWwiOiJhbGljZUBsaW5lYXIuYXBwIiwicm9sZSI6InVzZXIifQ.mocked_user_token_abc123",
   "tokenType": "Bearer",
   "expiresIn": 86400,
   "user": {
     "id": "usr_9981",
     "name": "{{faker.name}}",
     "email": "{{req.body.email}}",
-    "role": "admin"
+    "role": "user"
   }
 }`,
+		},
+		Scenarios: []models.Scenario{
+			{
+				ID:        "sc-login-wrong-pass",
+				Name:      "Invalid Password (401 Unauthorized)",
+				Enabled:   true,
+				Priority:  1,
+				MatchMode: models.MatchModeAny,
+				Conditions: []models.Condition{
+					{
+						Source:   models.ConditionSourceBody,
+						Property: "password",
+						Operator: models.OperatorEquals,
+						Value:    "wrong",
+					},
+					{
+						Source:   models.ConditionSourceBody,
+						Property: "password",
+						Operator: models.OperatorEquals,
+						Value:    "invalid",
+					},
+				},
+				Response: models.ResponseMock{
+					StatusCode:  401,
+					ContentType: "application/json",
+					Body: `{
+  "error": "Unauthorized",
+  "message": "Invalid email or password",
+  "code": "AUTH_INVALID_CREDENTIALS"
+}`,
+				},
+			},
+			{
+				ID:        "sc-login-missing-email",
+				Name:      "Missing Email (400 Bad Request)",
+				Enabled:   true,
+				Priority:  2,
+				MatchMode: models.MatchModeAll,
+				Conditions: []models.Condition{
+					{
+						Source:   models.ConditionSourceBody,
+						Property: "email",
+						Operator: models.OperatorIsEmpty,
+					},
+				},
+				Response: models.ResponseMock{
+					StatusCode:  400,
+					ContentType: "application/json",
+					Body: `{
+  "error": "Bad Request",
+  "message": "Field 'email' is required",
+  "field": "email"
+}`,
+				},
+			},
+			{
+				ID:        "sc-login-admin",
+				Name:      "Superadmin Login (Elevated Permissions)",
+				Enabled:   true,
+				Priority:  3,
+				MatchMode: models.MatchModeAll,
+				Conditions: []models.Condition{
+					{
+						Source:   models.ConditionSourceBody,
+						Property: "email",
+						Operator: models.OperatorEquals,
+						Value:    "admin@mockforge.io",
+					},
+				},
+				Response: models.ResponseMock{
+					StatusCode:  200,
+					ContentType: "application/json",
+					Body: `{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsIm5hbWUiOiJTdXBlciBBZG1pbiIsImVtYWlsIjoiYWRtaW5AbW9ja2ZvcmdlLmlvIiwicm9sZSI6InN1cGVyYWRtaW4ifQ.superadmin_token_xyz999",
+  "tokenType": "Bearer",
+  "expiresIn": 604800,
+  "user": {
+    "id": "usr_root",
+    "name": "Super Administrator",
+    "email": "admin@mockforge.io",
+    "role": "superadmin",
+    "permissions": ["*"]
+  }
+}`,
+				},
+			},
 		},
 		Latency: models.LatencyConfig{
 			Enabled: true,
 			Mode:    models.LatencyModeFixed,
-			FixedMs: 250,
+			FixedMs: 200,
 		},
 		Auth:      models.AuthConfig{Type: models.AuthTypeNone},
 		CreatedAt: now,

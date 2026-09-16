@@ -75,6 +75,56 @@ type AuthConfig struct {
 	RequiredClaims map[string]interface{} `json:"requiredClaims,omitempty"` // required JWT claims
 }
 
+// ConditionSource constants
+const (
+	ConditionSourceQuery  = "query"
+	ConditionSourceHeader = "header"
+	ConditionSourceParam  = "param"
+	ConditionSourceBody   = "body"
+)
+
+// ConditionOperator constants
+const (
+	OperatorEquals     = "equals"
+	OperatorNotEquals  = "not_equals"
+	OperatorContains   = "contains"
+	OperatorRegex      = "regex"
+	OperatorGt         = "gt"
+	OperatorGte        = "gte"
+	OperatorLt         = "lt"
+	OperatorLte        = "lte"
+	OperatorIsEmpty    = "is_empty"
+	OperatorIsNotEmpty = "is_not_empty"
+)
+
+// MatchMode constants
+const (
+	MatchModeAll = "all"
+	MatchModeAny = "any"
+)
+
+// Condition represents a single predicate rule evaluated against incoming request
+type Condition struct {
+	Source   string `json:"source"`             // "query", "header", "param", "body"
+	Property string `json:"property"`           // parameter/header name or JSON path (e.g. "role" or "user.email")
+	Operator string `json:"operator"`           // "equals", "not_equals", "contains", "regex", "gt", "gte", "lt", "lte", "is_empty", "is_not_empty"
+	Value    string `json:"value,omitempty"`    // target string to compare
+}
+
+// Scenario represents a conditional branch of an endpoint
+type Scenario struct {
+	ID          string        `json:"id"`
+	Name        string        `json:"name"`
+	Description string        `json:"description,omitempty"`
+	Enabled     bool          `json:"enabled"`
+	Priority    int           `json:"priority"`
+	MatchMode   string        `json:"matchMode"` // "all" or "any"
+	Conditions  []Condition   `json:"conditions"`
+	Response    ResponseMock  `json:"response"`
+	Latency     LatencyConfig `json:"latency,omitempty"`
+	Chaos       ChaosConfig   `json:"chaos,omitempty"`
+}
+
 // Endpoint represents a configurable mock HTTP route
 type Endpoint struct {
 	ID          string        `json:"id"`
@@ -88,6 +138,7 @@ type Endpoint struct {
 	Latency     LatencyConfig `json:"latency"`
 	Chaos       ChaosConfig   `json:"chaos"`
 	Auth        AuthConfig    `json:"auth"`
+	Scenarios   []Scenario    `json:"scenarios,omitempty"`
 	CreatedAt   time.Time     `json:"createdAt"`
 	UpdatedAt   time.Time     `json:"updatedAt"`
 }
@@ -134,6 +185,38 @@ func (e *Endpoint) Validate() error {
 	}
 	if e.Auth.Type == "" {
 		e.Auth.Type = AuthTypeNone
+	}
+	if e.Scenarios == nil {
+		e.Scenarios = make([]Scenario, 0)
+	}
+	for i := range e.Scenarios {
+		if err := e.Scenarios[i].Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Validate checks scenario integrity
+func (s *Scenario) Validate() error {
+	if strings.TrimSpace(s.ID) == "" {
+		return errors.New("scenario ID cannot be empty")
+	}
+	if strings.TrimSpace(s.Name) == "" {
+		s.Name = "Untitled Scenario"
+	}
+	if s.MatchMode == "" {
+		s.MatchMode = MatchModeAll
+	}
+	s.MatchMode = strings.ToLower(s.MatchMode)
+	if s.Conditions == nil {
+		s.Conditions = make([]Condition, 0)
+	}
+	if s.Response.StatusCode == 0 {
+		s.Response.StatusCode = 200
+	}
+	if s.Response.ContentType == "" {
+		s.Response.ContentType = "application/json"
 	}
 	return nil
 }

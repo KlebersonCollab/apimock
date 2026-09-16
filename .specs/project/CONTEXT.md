@@ -15,6 +15,10 @@
 | **Live Traffic Inspector** | A real-time SSE stream and log buffer of inbound HTTP requests with headers, payloads, timings, and replay functionality. | Observability & debugging |
 | **OpenAPI Hub** | Subsystem for bidirectional import and export of OpenAPI 3.0 specifications and full workspace configurations. | Interoperability |
 | **Linear Canvas UI** | Embedded single-page frontend styled strictly according to `DESIGN.md` tokens (near-black `#010102` canvas, `#5e6ad2` lavender accent). | User interface |
+| **Scenario / Conditional Rule** | A configured branch rule within a Mock Endpoint containing match predicates, response override, and optional latency/chaos overrides. | Multi-scenario routing |
+| **Match Predicate** | An evaluation expression checking request parts (`query`, `header`, `param`, `body`) using operators (`equals`, `not_equals`, `contains`, `regex`, `gt`, `gte`, `lt`, `lte`, `is_empty`, `is_not_empty`). | Condition engine |
+| **Match Mode** | Logic combining multiple conditions within a scenario: `ALL` (logical AND) or `ANY` (logical OR). | Scenario matching |
+| **First-Match Cascading** | Evaluation policy where scenarios are evaluated in priority sequence, executing the first matching rule, or falling back to Default Response if none match. | Dispatch strategy |
 
 ## 2. Project Boundaries
 - **Primary Goal**: Provide a single-binary, high-performance mock API server in Go with an integrated, ultra-elegant web UI for rapid frontend-backend decoupling.

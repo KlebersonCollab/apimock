@@ -102,3 +102,33 @@ func TestCollectionValidate(t *testing.T) {
 		}
 	})
 }
+
+func TestScenarioValidate(t *testing.T) {
+	t.Run("Valid scenario and sanitization", func(t *testing.T) {
+		sc := models.Scenario{
+			ID: "sc-1",
+		}
+		if err := sc.Validate(); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if sc.Name != "Untitled Scenario" {
+			t.Errorf("expected default name, got %s", sc.Name)
+		}
+		if sc.MatchMode != models.MatchModeAll {
+			t.Errorf("expected default match mode 'all', got %s", sc.MatchMode)
+		}
+		if sc.Response.StatusCode != 200 {
+			t.Errorf("expected default status code 200, got %d", sc.Response.StatusCode)
+		}
+		if sc.Conditions == nil {
+			t.Error("expected non-nil conditions slice")
+		}
+	})
+
+	t.Run("Empty ID error", func(t *testing.T) {
+		sc := models.Scenario{Name: "No ID"}
+		if err := sc.Validate(); err == nil {
+			t.Error("expected error for empty scenario ID, got nil")
+		}
+	})
+}
