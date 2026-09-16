@@ -1065,10 +1065,56 @@ func (s *Server) SeedDemoData() {
 		},
 		Scenarios: []models.Scenario{
 			{
+				ID:        "sc-login-missing-email",
+				Name:      "Missing Email (400 Bad Request)",
+				Enabled:   true,
+				Priority:  1,
+				MatchMode: models.MatchModeAll,
+				Conditions: []models.Condition{
+					{
+						Source:   models.ConditionSourceBody,
+						Property: "email",
+						Operator: models.OperatorIsEmpty,
+					},
+				},
+				Response: models.ResponseMock{
+					StatusCode:  400,
+					ContentType: "application/json",
+					Body: `{
+  "error": "Bad Request",
+  "message": "Field 'email' is required",
+  "field": "email"
+}`,
+				},
+			},
+			{
+				ID:        "sc-login-missing-pass",
+				Name:      "Missing Password (400 Bad Request)",
+				Enabled:   true,
+				Priority:  2,
+				MatchMode: models.MatchModeAll,
+				Conditions: []models.Condition{
+					{
+						Source:   models.ConditionSourceBody,
+						Property: "password",
+						Operator: models.OperatorIsEmpty,
+					},
+				},
+				Response: models.ResponseMock{
+					StatusCode:  400,
+					ContentType: "application/json",
+					Body: `{
+  "error": "Bad Request",
+  "message": "Field 'password' is required",
+  "field": "password"
+}`,
+				},
+			},
+			{
 				ID:        "sc-login-wrong-pass",
 				Name:      "Invalid Password (401 Unauthorized)",
 				Enabled:   true,
-				Priority:  1,
+				Priority:  3,
 				MatchMode: models.MatchModeAny,
 				Conditions: []models.Condition{
 					{
@@ -1095,33 +1141,10 @@ func (s *Server) SeedDemoData() {
 				},
 			},
 			{
-				ID:        "sc-login-missing-email",
-				Name:      "Missing Email (400 Bad Request)",
-				Enabled:   true,
-				Priority:  2,
-				MatchMode: models.MatchModeAll,
-				Conditions: []models.Condition{
-					{
-						Source:   models.ConditionSourceBody,
-						Property: "email",
-						Operator: models.OperatorIsEmpty,
-					},
-				},
-				Response: models.ResponseMock{
-					StatusCode:  400,
-					ContentType: "application/json",
-					Body: `{
-  "error": "Bad Request",
-  "message": "Field 'email' is required",
-  "field": "email"
-}`,
-				},
-			},
-			{
 				ID:        "sc-login-admin",
 				Name:      "Superadmin Login (Elevated Permissions)",
 				Enabled:   true,
-				Priority:  3,
+				Priority:  4,
 				MatchMode: models.MatchModeAll,
 				Conditions: []models.Condition{
 					{

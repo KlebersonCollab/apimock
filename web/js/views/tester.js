@@ -19,9 +19,11 @@ views.tester = {
           </div>
           <div style="display: flex; gap: 6px; flex-wrap: wrap;">
             <button class="btn btn-secondary btn-sm" onclick="views.tester.testEndpoint('GET', '/api/v1/users')">GET Users</button>
-            <button class="btn btn-secondary btn-sm" onclick="views.tester.testEndpoint('GET', '/api/v1/users/usr_42')">GET User :id</button>
-            <button class="btn btn-secondary btn-sm" onclick="views.tester.testEndpoint('GET', '/api/resources/products')">GET Products DB</button>
-            <button class="btn btn-secondary btn-sm" onclick="views.tester.testEndpoint('GET', '/api/v1/analytics/overview')">GET Analytics (Auth)</button>
+            <button class="btn btn-secondary btn-sm" onclick="views.tester.testEndpoint('GET', '/api/v1/users?status=archived')">GET Users (Empty State)</button>
+            <button class="btn btn-secondary btn-sm" onclick="views.tester.testEndpoint('POST', '/api/v1/auth/login', '{\n  \"email\": \"user@app.com\",\n  \"password\": \"123456\"\n}')">POST Login (Valid 200)</button>
+            <button class="btn btn-secondary btn-sm" onclick="views.tester.testEndpoint('POST', '/api/v1/auth/login', '{\n  \"email\": \"user@app.com\",\n  \"password\": \"wrong\"\n}')">POST Login (Wrong Pass 401)</button>
+            <button class="btn btn-secondary btn-sm" onclick="views.tester.testEndpoint('POST', '/api/v1/auth/login', '{\n  \"password\": \"123456\"\n}')">POST Login (No Email 400)</button>
+            <button class="btn btn-secondary btn-sm" onclick="views.tester.testEndpoint('POST', '/api/v1/auth/login', '{\n  \"email\": \"admin@mockforge.io\",\n  \"password\": \"secret\"\n}')">POST Login (Admin 200)</button>
           </div>
         </div>
 
@@ -74,16 +76,23 @@ views.tester = {
     }
   },
 
-  testEndpoint(method, path) {
+  testEndpoint(method, path, body = '') {
     this.targetMethod = method;
     this.targetPath = path;
+    this.targetBody = body;
     if (app.currentView !== 'tester') {
       app.navigate('tester');
+      setTimeout(() => {
+        const bEl = document.getElementById('tester-body');
+        if (bEl && body) bEl.value = body;
+      }, 50);
     } else {
       const mEl = document.getElementById('tester-method');
       const pEl = document.getElementById('tester-path');
+      const bEl = document.getElementById('tester-body');
       if (mEl) mEl.value = method;
       if (pEl) pEl.value = path;
+      if (bEl) bEl.value = body;
       this.sendRequest(new Event('submit'));
     }
   },
